@@ -4,7 +4,7 @@
 set(SwitchboardSDK_FOUND FALSE)
 
 if(NOT DEFINED SWITCHBOARD_PACKAGE_VERSION)
-    set(SWITCHBOARD_PACKAGE_VERSION "3.2.2") # Default version
+    set(SWITCHBOARD_PACKAGE_VERSION "3.2.3") # Default version
 endif()
 
 # Detect platform (adjust as needed)
@@ -58,7 +58,7 @@ function(download_and_extract url file_name output_dir)
             #   1. Run cmake -B build . from the repo root and look for the
             #      "Expand-Archive exit=..." STATUS lines in the CMake output.
             #   2. Manually verify the downloaded zip is valid:
-            #        7z l build/SwitchboardSDK/Downloads/SwitchboardSDK-windows-3.2.2.zip
+            #        7z l build/SwitchboardSDK/Downloads/SwitchboardSDK-windows-3.2.3.zip
             #   3. If 7z is available (it is on GitHub runners at C:\Program Files\7-Zip\7z.exe),
             #      consider replacing both methods below with:
             #        execute_process(COMMAND "C:/Program Files/7-Zip/7z.exe" x ${zip_file} -o${output_dir} -y)
