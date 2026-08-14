@@ -4,7 +4,7 @@
 set(SwitchboardSDK_FOUND FALSE)
 
 if(NOT DEFINED SWITCHBOARD_PACKAGE_VERSION)
-    set(SWITCHBOARD_PACKAGE_VERSION "3.2.4") # Default version
+    set(SWITCHBOARD_PACKAGE_VERSION "3.2.5") # Default version
 endif()
 
 # Detect platform (adjust as needed)
@@ -58,7 +58,7 @@ function(download_and_extract url file_name output_dir)
             #   1. Run cmake -B build . from the repo root and look for the
             #      "Expand-Archive exit=..." STATUS lines in the CMake output.
             #   2. Manually verify the downloaded zip is valid:
-            #        7z l build/SwitchboardSDK/Downloads/SwitchboardSDK-windows-3.2.4.zip
+            #        7z l build/SwitchboardSDK/Downloads/SwitchboardSDK-windows-3.2.5.zip
             #   3. If 7z is available (it is on GitHub runners at C:\Program Files\7-Zip\7z.exe),
             #      consider replacing both methods below with:
             #        execute_process(COMMAND "C:/Program Files/7-Zip/7z.exe" x ${zip_file} -o${output_dir} -y)
@@ -148,12 +148,12 @@ function(find_switchboard_package PACKAGE_NAME PACKAGE_VERSION)
         return()
     endif ()
 
-    # Construct the URL dynamically
-    set(SWITCHBOARD_PACKAGE_URL "https://switchboard-sdk-public.s3.amazonaws.com/builds/release/${PACKAGE_VERSION}/${SwitchboardSDK_PLATFORM}/${PACKAGE_NAME}.zip")
+    # Construct the URL dynamically. Public zips are named <package>-<platform>-<version>.
+    set(SWITCHBOARD_PACKAGE_FILE_NAME "${PACKAGE_NAME}-${SwitchboardSDK_PLATFORM}-${PACKAGE_VERSION}")
+    set(SWITCHBOARD_PACKAGE_URL "https://switchboard-sdk-public.s3.amazonaws.com/builds/release/${PACKAGE_VERSION}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_FILE_NAME}.zip")
     set(SWITCHBOARD_PACKAGE_DIR "${SwitchboardSDK_DIR}/libs/${PACKAGE_NAME}/${SwitchboardSDK_PLATFORM}/${PACKAGE_VERSION}")
 
     # Download and extract the package
-    set(SWITCHBOARD_PACKAGE_FILE_NAME "${PACKAGE_NAME}-${SwitchboardSDK_PLATFORM}-${PACKAGE_VERSION}")
     download_and_extract(${SWITCHBOARD_PACKAGE_URL} ${SWITCHBOARD_PACKAGE_FILE_NAME} ${SWITCHBOARD_PACKAGE_DIR})
 
     # Define package as an INTERFACE library
