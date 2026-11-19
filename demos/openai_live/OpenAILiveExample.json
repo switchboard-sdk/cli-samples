@@ -1,0 +1,129 @@
+{
+  "type": "Switchboard.Realtime",
+  "config": {
+    "microphoneEnabled": true,
+    "defaultStreamParameters": {
+      "numberOfInputChannels": 1,
+      "numberOfOutputChannels": 2
+    },
+    "graph": {
+      "config": {
+        "sampleRate": 48000,
+        "bufferSize": 480
+      },
+      "nodes": [
+        {
+          "id": "multiChannelToMonoNode",
+          "type": "Switchboard.MultiChannelToMono"
+        },
+        {
+          "id": "vadSplitterNode",
+          "type": "Switchboard.BusSplitter"
+        },
+        {
+          "id": "vadNode",
+          "type": "Silero.VAD",
+          "config": {
+            "threshold": 0.5,
+            "minSilenceDurationMs": 500
+          }
+        },
+        {
+          "id": "liveNode",
+          "type": "OpenAI.Live",
+          "config": {
+            "instructions": "You're a friendly voice assistant in a Switchboard SDK sample app. Keep answers to a sentence or two.\n\nYou can't change anything in the app yourself: only delegating does. When the user asks for something your tools do, delegate it right away, every time, also when asked again or right after doing it. Until the result comes, say a word at most, like \"Sure\". Never say it's done, or that you'll do it, without delegating: saying so changes nothing. \"Speak up\", \"talk louder\" or \"quieter\" and \"I can't hear you\" are about the volume setting of your voice, which only set_voice_volume changes: you can't speak louder yourself. Delegate them to set_voice_volume every time. Your tools: set_voice_volume (how loud your voice plays).\n\nYour voice can't change during the conversation. To change it, the user starts the sample again with --voice and the voice's name.",
+            "delegation": "responses",
+            "responsesInstructions": "You carry out actions in the user's app. When a request matches one of your tools, call the tool; never claim an action is done without calling it.",
+            "tools": [
+              {
+                "type": "function",
+                "name": "set_voice_volume",
+                "description": "Set how loud your own voice plays, e.g. when asked to speak up. Give either volume, for an exact level, or change, for louder or quieter. The result is the volume now.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {
+                    "volume": {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 100,
+                      "description": "Volume in percent; 50 is the default."
+                    },
+                    "change": {
+                      "type": "number",
+                      "description": "Percentage points to add; negative is quieter. About 20 for \"a bit\"."
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            ],
+            "idleTimeoutMs": 15000,
+            "store": true
+          }
+        },
+        {
+          "id": "monoToMultiChannelNode",
+          "type": "Switchboard.MonoToMultiChannel"
+        },
+        {
+          "id": "voiceGainNode",
+          "type": "Switchboard.Gain",
+          "properties": {
+            "gain": 1.0
+          }
+        },
+        {
+          "id": "limiterNode",
+          "type": "Switchboard.Limiter"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNode": "inputNode",
+          "destinationNode": "multiChannelToMonoNode"
+        },
+        {
+          "sourceNode": "multiChannelToMonoNode",
+          "destinationNode": "vadSplitterNode"
+        },
+        {
+          "sourceNode": "vadSplitterNode",
+          "sourceBusIndex": 0,
+          "destinationNode": "liveNode"
+        },
+        {
+          "sourceNode": "vadSplitterNode",
+          "sourceBusIndex": 1,
+          "destinationNode": "vadNode"
+        },
+        {
+          "sourceNode": "liveNode",
+          "destinationNode": "monoToMultiChannelNode"
+        },
+        {
+          "sourceNode": "monoToMultiChannelNode",
+          "destinationNode": "voiceGainNode"
+        },
+        {
+          "sourceNode": "voiceGainNode",
+          "destinationNode": "limiterNode"
+        },
+        {
+          "sourceNode": "limiterNode",
+          "destinationNode": "outputNode"
+        }
+      ],
+      "dataConnections": [
+        {
+          "source": "vadNode/events/speechStarted",
+          "destination": "liveNode/actions/speechStarted"
+        },
+        {
+          "source": "vadNode/events/speechEnded",
+          "destination": "liveNode/actions/speechEnded"
+        }
+      ]
+    }
+  }
+}

@@ -4,7 +4,12 @@
 set(SwitchboardSDK_FOUND FALSE)
 
 if(NOT DEFINED SWITCHBOARD_PACKAGE_VERSION)
-    set(SWITCHBOARD_PACKAGE_VERSION "3.2.8") # Default version
+    set(SWITCHBOARD_PACKAGE_VERSION "3.3.0") # Default version
+endif()
+
+# "release", or "develop" for the latest development build of the version.
+if(NOT DEFINED SWITCHBOARD_PACKAGE_CHANNEL)
+    set(SWITCHBOARD_PACKAGE_CHANNEL "develop") # Until 3.3.0 is released
 endif()
 
 # Detect platform (adjust as needed)
@@ -150,11 +155,15 @@ function(find_switchboard_package PACKAGE_NAME PACKAGE_VERSION)
 
     # Construct the URL dynamically. Public zips are named <package>-<platform>-<version>.
     set(SWITCHBOARD_PACKAGE_FILE_NAME "${PACKAGE_NAME}-${SwitchboardSDK_PLATFORM}-${PACKAGE_VERSION}")
-    set(SWITCHBOARD_PACKAGE_URL "https://switchboard-sdk-public.s3.amazonaws.com/builds/release/${PACKAGE_VERSION}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_FILE_NAME}.zip")
-    set(SWITCHBOARD_PACKAGE_DIR "${SwitchboardSDK_DIR}/libs/${PACKAGE_NAME}/${SwitchboardSDK_PLATFORM}/${PACKAGE_VERSION}")
+    if(SWITCHBOARD_PACKAGE_CHANNEL STREQUAL "release")
+        set(SWITCHBOARD_PACKAGE_URL "https://switchboard-sdk-public.s3.amazonaws.com/builds/release/${PACKAGE_VERSION}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_FILE_NAME}.zip")
+    else()
+        set(SWITCHBOARD_PACKAGE_URL "https://switchboard-sdk-public.s3.amazonaws.com/builds/${SWITCHBOARD_PACKAGE_CHANNEL}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_FILE_NAME}.zip")
+    endif()
+    set(SWITCHBOARD_PACKAGE_DIR "${SwitchboardSDK_DIR}/libs/${PACKAGE_NAME}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_CHANNEL}/${PACKAGE_VERSION}")
 
     # Download and extract the package
-    download_and_extract(${SWITCHBOARD_PACKAGE_URL} ${SWITCHBOARD_PACKAGE_FILE_NAME} ${SWITCHBOARD_PACKAGE_DIR})
+    download_and_extract(${SWITCHBOARD_PACKAGE_URL} "${SWITCHBOARD_PACKAGE_CHANNEL}-${SWITCHBOARD_PACKAGE_FILE_NAME}" ${SWITCHBOARD_PACKAGE_DIR})
 
     # Define package as an INTERFACE library
     add_library(${PACKAGE_NAME} SHARED IMPORTED)
@@ -246,7 +255,7 @@ endfunction()
 find_switchboard_package("SwitchboardSDK" "${SWITCHBOARD_PACKAGE_VERSION}")
 if (SwitchboardSDK_FOUND)
     set(SwitchboardSDK_LIBRARIES ${SwitchboardSDK_LIBRARIES} "SwitchboardSDK")
-    set(_sdk_base "${SwitchboardSDK_DIR}/libs/SwitchboardSDK/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_VERSION}")
+    set(_sdk_base "${SwitchboardSDK_DIR}/libs/SwitchboardSDK/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_CHANNEL}/${SWITCHBOARD_PACKAGE_VERSION}")
     if(EXISTS "${_sdk_base}/x86_64/bin")
         set(SwitchboardSDK_PACKAGE_DIRECTORIES_RELEASE ${SwitchboardSDK_PACKAGE_DIRECTORIES_RELEASE} "${_sdk_base}/x86_64/bin")
     elseif(EXISTS "${_sdk_base}/${CMAKE_SYSTEM_PROCESSOR}/Release")
@@ -263,7 +272,7 @@ set(_missing_components "")
 foreach(_comp IN LISTS SwitchboardSDK_FIND_COMPONENTS)
     find_switchboard_package(${_comp} "${SWITCHBOARD_PACKAGE_VERSION}")
     if(${_comp}_FOUND)
-        set(package_dir "${SwitchboardSDK_DIR}/libs/${_comp}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_VERSION}")
+        set(package_dir "${SwitchboardSDK_DIR}/libs/${_comp}/${SwitchboardSDK_PLATFORM}/${SWITCHBOARD_PACKAGE_CHANNEL}/${SWITCHBOARD_PACKAGE_VERSION}")
         message(STATUS "Found SwitchboardSDK component: ${_comp} at ${package_dir}")
         if(EXISTS "${package_dir}/x86_64/bin")
             message(STATUS "Adding ${package_dir}/x86_64/bin to package directories for ${_comp}")
