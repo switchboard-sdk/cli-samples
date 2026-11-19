@@ -1,8 +1,6 @@
 #include "OpenAIExtension.hpp"
 #include "SileroVADExtension.hpp"
 
-#include <algorithm>
-#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -12,7 +10,6 @@
 #include <string>
 #include <switchboard/Switchboard.hpp>
 #include <switchboard_core/Logger.hpp>
-#include <vector>
 
 using namespace switchboard;
 
@@ -21,14 +18,9 @@ static const std::string DEFAULT_APP_ID = "6abbc7fa1fed5b257c3f0057";
 static const std::string DEFAULT_APP_SECRET = "de3bd20ede43a3a708ef5f75b50de14dd0d64375";
 
 static const std::string LIVE_NODE = "liveNode";
-static const std::string VOICE_GAIN_NODE = "voiceGainNode";
-
-// Gain at 100% volume; 50%, the default, leaves the voice unchanged.
-static constexpr float MAX_VOICE_GAIN = 2.0f;
-
-// GPT-Live voices, for --voice.
-static const std::vector<std::string> VOICES = { "alloy", "ash",   "ballad", "cedar",   "coral",
-                                                 "echo",  "marin", "sage",   "shimmer", "verse" };
+static const std::string MUSIC_PLAYER_NODE = "musicPlayerNode";
+static const std::string MUSIC_URL =
+    "https://switchboard-sdk-public.s3.dualstack.us-east-1.amazonaws.com/assets/audio/music/elevator-music-stereo.mp3";
 
 static std::optional<std::string> readContentsOfTextFile(const std::string& filePath) {
     std::filesystem::path fileSystemPath(filePath);
@@ -79,65 +71,46 @@ static ToolOutput toolError(const std::string& message) {
     return { false, SBAnyMap::mapToJson(SBAnyMap({ { "error", message } })) };
 }
 
-// Answered here rather than with autoResult, so the model gets the volume it ended up at, or the failure.
-static ToolOutput setVoiceVolume(const std::string& argumentsJson) {
-    SBAnyMap arguments;
-    try {
-        arguments = SBAnyMap::jsonToMap(argumentsJson);
-    } catch (const std::exception&) {
-        return toolError("The arguments aren't a JSON object.");
-    }
-
-    const Result<SBAny> gain = Switchboard::getValue(VOICE_GAIN_NODE, "gain");
-    if (gain.isError()) {
-        return toolError("Couldn't read the voice volume: " + gain.error().message);
-    }
-    const float currentPercent = SBAny::convert<float>(gain.value()) / MAX_VOICE_GAIN * 100.0f;
-
-    // The model may fill in both, with 0 for the one it doesn't mean.
-    const float change = arguments.hasKey("change") ? SBAny::convert<float>(arguments.at("change")) : 0.0f;
-    float percent = currentPercent;
-    if (change != 0.0f) {
-        percent = currentPercent + change;
-    } else if (arguments.hasKey("volume")) {
-        percent = SBAny::convert<float>(arguments.at("volume"));
-    }
-    percent = std::clamp(std::round(percent), 0.0f, 100.0f);
-
-    const Result<void> result = Switchboard::setValue(VOICE_GAIN_NODE, "gain", percent / 100.0f * MAX_VOICE_GAIN);
+static ToolOutput musicResult(const Result<SBAny>& result, bool playing) {
     if (result.isError()) {
-        return toolError("Couldn't set the voice volume: " + result.error().message);
+        return toolError(result.error().message);
     }
-    return { true, SBAnyMap::mapToJson(SBAnyMap({ { "volume", static_cast<int>(percent) } })) };
+    return { true, SBAnyMap::mapToJson(SBAnyMap({ { "playing", playing } })) };
 }
 
-static ToolOutput handleToolCall(const std::string& name, const std::string& argumentsJson) {
-    if (name == "set_voice_volume") {
-        return setVoiceVolume(argumentsJson);
+// Resumes the track if it's open (paused), otherwise loads it, which starts it since the player has autoPlay.
+static ToolOutput playMusic() {
+    const Result<SBAny> state = Switchboard::getValue(MUSIC_PLAYER_NODE, "state");
+    const std::string current = state.isError() ? "" : SBAny::convert<std::string>(state.value());
+    if (current == "connecting" || current == "buffering" || current == "ready") {
+        return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "play"), true);
+    }
+    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "load", { { "url", MUSIC_URL } }), true);
+}
+
+static ToolOutput pauseMusic() {
+    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "pause"), false);
+}
+
+// Unloads the track, so the next play_music starts it from the beginning.
+static ToolOutput stopMusic() {
+    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "unload"), false);
+}
+
+static ToolOutput handleToolCall(const std::string& name) {
+    if (name == "play_music") {
+        return playMusic();
+    }
+    if (name == "pause_music") {
+        return pauseMusic();
+    }
+    if (name == "stop_music") {
+        return stopMusic();
     }
     return toolError("Unknown tool: " + name);
 }
 
 int main(int argc, const char* argv[]) {
-    std::optional<std::string> voice;
-    for (int i = 1; i < argc; i++) {
-        const std::string argument = argv[i];
-        if (argument == "--voice" && i + 1 < argc) {
-            voice = argv[++i];
-        } else {
-            std::cerr << "Usage: " << argv[0] << " [--voice <name>]" << std::endl;
-            return 1;
-        }
-    }
-    if (voice.has_value() && std::find(VOICES.begin(), VOICES.end(), voice.value()) == VOICES.end()) {
-        std::cerr << "Unknown voice: " << voice.value() << ". Voices:";
-        for (const auto& name : VOICES) {
-            std::cerr << " " << name;
-        }
-        std::cerr << std::endl;
-        return 1;
-    }
-
     // Load JSON
     std::string engineJSONFilePath = "OpenAILiveExample.json";
     auto engineJSON = readContentsOfTextFile(engineJSONFilePath);
@@ -169,14 +142,6 @@ int main(int argc, const char* argv[]) {
     }
     const std::string engineID = result.value();
 
-    if (voice.has_value()) {
-        auto voiceResult = Switchboard::setValue(LIVE_NODE, "voice", voice.value());
-        if (voiceResult.isError()) {
-            std::cerr << "Failed to set the voice: " << voiceResult.error().message << std::endl;
-            return 1;
-        }
-    }
-
     // Transcript
     Switchboard::addEventListener(LIVE_NODE, "inputTranscriptDelta", [](const Event& event) {
         const auto data = SBAny::convert<SBAnyMap>(event.data);
@@ -194,7 +159,7 @@ int main(int argc, const char* argv[]) {
         const auto name = SBAny::convert<std::string>(data.at("name"));
         const auto argumentsJson = SBAny::convert<std::string>(data.at("argumentsJson"));
 
-        const ToolOutput output = handleToolCall(name, argumentsJson);
+        const ToolOutput output = handleToolCall(name);
         printLine("[" + name + " " + argumentsJson + (output.ok ? " -> " : " failed: ") + output.json + "]");
 
         const auto answer = output.ok

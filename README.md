@@ -48,18 +48,20 @@ cd out/bin
 
 ```bash
 cd out/bin
-./OpenAILive                 # or ./OpenAILive --voice cedar
+./OpenAILive
 ```
 
 Use headphones: there's no echo cancellation here, so through speakers the assistant hears itself. On macOS, allow
 your terminal to use the microphone when asked. Then talk; the transcript prints as you go. Press Enter to stop.
 
-Try "speak up", "a bit quieter" or "set your volume to 80": the `set_voice_volume` tool changes the gain of a
-`Switchboard.Gain` node after the voice. The app answers the tool in code: it listens for the node's `toolCall`
-event and replies with `submitToolResult`, or `submitToolError` when it fails.
+Try "play some music", then keep talking: the `play_music` tool streams a track into a `Switchboard.StreamPlayer`,
+and a `Switchboard.MusicDucking` node lowers it while the assistant speaks. "Pause the music" and "stop the music"
+call `pause_music` and `stop_music`; after a pause, `play_music` resumes, and after a stop it starts over.
 
-The voice can't change during a conversation, so pick it at start with `--voice`: alloy, ash, ballad, cedar, coral,
-echo, marin (the default), sage, shimmer or verse. The graph is in `demos/openai_live/OpenAILiveExample.json`. It sets
+The app answers the tools in code: it listens for the node's `toolCall` event and replies with `submitToolResult`,
+or `submitToolError` when a tool fails.
+
+The graph is in `demos/openai_live/OpenAILiveExample.json`. It sets
 `delegation: "responses"`, which tools need, and idle mode: after 15 s of quiet the session closes, so it isn't
 billed, and a `Silero.VAD` node reopens it when you speak, with the conversation intact.
 
