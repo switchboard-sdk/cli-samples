@@ -92,20 +92,12 @@ static ToolOutput pauseMusic() {
     return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "pause"), false);
 }
 
-// Unloads the track, so the next play_music starts it from the beginning.
-static ToolOutput stopMusic() {
-    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "unload"), false);
-}
-
 static ToolOutput handleToolCall(const std::string& name) {
     if (name == "play_music") {
         return playMusic();
     }
     if (name == "pause_music") {
         return pauseMusic();
-    }
-    if (name == "stop_music") {
-        return stopMusic();
     }
     return toolError("Unknown tool: " + name);
 }
