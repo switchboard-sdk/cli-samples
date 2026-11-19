@@ -32,7 +32,7 @@
           "id": "liveNode",
           "type": "OpenAI.Live",
           "config": {
-            "instructions": "You're a friendly voice assistant in a Switchboard SDK sample app. Keep answers to a sentence or two.\n\nYou can't change anything in the app yourself: only delegating does. When the user asks for something your tools do, delegate it right away, every time, also when asked again or right after doing it. Until the result comes, say a word at most, like \"Sure\". Never say it's done, or that you'll do it, without delegating: saying so changes nothing. Your tools: play_music (play the app's music, an elevator music track, or resume it after a pause), pause_music (pause the music), stop_music (stop the music).",
+            "instructions": "You're a friendly voice assistant in a Switchboard SDK sample app. Keep answers to a sentence or two.\n\nYou can't change anything in the app yourself: only delegating does. When the user asks for something your tools do, delegate it right away, every time, also when asked again or right after doing it. Until the result comes, say a word at most, like \"Sure\". Never say it's done, or that you'll do it, without delegating: saying so changes nothing. Your tools: play_music (play the app's music, an elevator music track, or resume it after a pause), pause_music (pause or stop the music).",
             "delegation": "responses",
             "responsesInstructions": "You carry out actions in the user's app. When a request matches one of your tools, call the tool; never claim an action is done without calling it.",
             "tools": [
@@ -49,17 +49,7 @@
               {
                 "type": "function",
                 "name": "pause_music",
-                "description": "Pause the music, so play_music resumes it where it was.",
-                "parameters": {
-                  "type": "object",
-                  "properties": {},
-                  "additionalProperties": false
-                }
-              },
-              {
-                "type": "function",
-                "name": "stop_music",
-                "description": "Stop the music, so play_music starts it from the beginning.",
+                "description": "Pause or stop the music, so play_music resumes it where it was.",
                 "parameters": {
                   "type": "object",
                   "properties": {},
@@ -70,10 +60,6 @@
             "idleTimeoutMs": 15000,
             "store": true
           }
-        },
-        {
-          "id": "voiceSplitterNode",
-          "type": "Switchboard.BusSplitter"
         },
         {
           "id": "musicPlayerNode",
@@ -94,26 +80,11 @@
           }
         },
         {
-          "id": "duckingNode",
-          "type": "Switchboard.MusicDucking",
-          "properties": {
-            "duckingAmount": 0.4,
-            "activationThreshold": 0.05,
-            "attack": 0.1,
-            "hold": 1.5,
-            "release": 0.6
-          }
-        },
-        {
           "id": "mixerNode",
           "type": "Switchboard.Mixer",
           "config": {
             "numberOfInputs": 2
           }
-        },
-        {
-          "id": "limiterNode",
-          "type": "Switchboard.Limiter"
         },
         {
           "id": "monoToMultiChannelNode",
@@ -141,19 +112,8 @@
         },
         {
           "sourceNode": "liveNode",
-          "destinationNode": "voiceSplitterNode"
-        },
-        {
-          "sourceNode": "voiceSplitterNode",
-          "sourceBusIndex": 0,
           "destinationNode": "mixerNode",
           "destinationBusIndex": 0
-        },
-        {
-          "sourceNode": "voiceSplitterNode",
-          "sourceBusIndex": 1,
-          "destinationNode": "duckingNode",
-          "destinationBusIndex": 1
         },
         {
           "sourceNode": "musicPlayerNode",
@@ -165,20 +125,11 @@
         },
         {
           "sourceNode": "musicGainNode",
-          "destinationNode": "duckingNode",
-          "destinationBusIndex": 0
-        },
-        {
-          "sourceNode": "duckingNode",
           "destinationNode": "mixerNode",
           "destinationBusIndex": 1
         },
         {
           "sourceNode": "mixerNode",
-          "destinationNode": "limiterNode"
-        },
-        {
-          "sourceNode": "limiterNode",
           "destinationNode": "monoToMultiChannelNode"
         },
         {
