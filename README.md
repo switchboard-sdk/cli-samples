@@ -8,32 +8,54 @@ Ensure you have the following installed:
 - **CMake** (>= 3.28)
 - **C++ compiler** (e.g., GCC, Clang, MSVC)
 - **Xcode** (macOS)
-- **Python 3**
+- **Python 3.6 or newer**
+
+### macOS
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
+
+### Windows (Command Prompt)
+
+```bat
+py -m venv .venv
+.venv\Scripts\activate
+py -m pip install -r requirements.txt
+```
+
+### Linux
+
+```bash
+sudo apt install python3-venv
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
 
 ## Build & Run
 
 ### macOS
 
 ```bash
-pip install -r requirements.txt
 inv build-macos --clean
 cd out/bin
 ./Sine # or ./TTS ./STT ./STTtoTTS ./OpenAILive
 ```
 
-### Windows
+### Windows (Command Prompt)
 
-```bash
-pip install -r requirements.txt
+```bat
 inv build-windows --clean
-cd out/bin
-./Sine.exe # or ./TTS.exe ./STT.exe ./STTtoTTS.exe
+cd out\bin
+Sine.exe
 ```
 
 ### Linux
 
 ```bash
-pip install -r requirements.txt
 inv build-linux --clean
 cd out/bin
 ./Sine # or ./TTS ./STT ./STTtoTTS ./OpenAILive

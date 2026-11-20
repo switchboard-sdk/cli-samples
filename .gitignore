@@ -5,3 +5,4 @@ cmake-build-release
 libs
 out
 .DS_Store
+.venv
