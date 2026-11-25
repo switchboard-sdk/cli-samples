@@ -24,7 +24,6 @@
           "id": "vadNode",
           "type": "Silero.VAD",
           "config": {
-            "threshold": 0.5,
             "minSilenceDurationMs": 500
           }
         },
@@ -62,10 +61,7 @@
         },
         {
           "id": "musicPlayerNode",
-          "type": "Switchboard.StreamPlayer",
-          "config": {
-            "autoPlay": true
-          }
+          "type": "Switchboard.StreamPlayer"
         },
         {
           "id": "musicMonoNode",

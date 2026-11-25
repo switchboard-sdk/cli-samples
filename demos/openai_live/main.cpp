@@ -22,7 +22,6 @@ static const std::string MUSIC_URL =
     "https://switchboard-sdk-public.s3.dualstack.us-east-1.amazonaws.com/assets/audio/music/elevator-music-stereo.mp3";
 
 static std::optional<std::string> readContentsOfTextFile(const std::string& filePath) {
-    std::filesystem::path fileSystemPath(filePath);
     if (!std::filesystem::exists(filePath)) {
         return std::nullopt;
     }
@@ -56,44 +55,24 @@ static void printTranscript(const std::string& speaker, const std::string& delta
     std::cout << delta << std::flush;
 }
 
-struct ToolOutput {
-    bool ok;
-    std::string json;
-};
-
-static ToolOutput toolError(const std::string& message) {
-    return { false, SBAnyMap::mapToJson(SBAnyMap({ { "error", message } })) };
-}
-
-static ToolOutput musicResult(const Result<SBAny>& result, bool playing) {
-    if (result.isError()) {
-        return toolError(result.error().message);
-    }
-    return { true, SBAnyMap::mapToJson(SBAnyMap({ { "playing", playing } })) };
-}
-
-// Resumes the track if it's open (paused), otherwise loads it, which starts it since the player has autoPlay.
-static ToolOutput playMusic() {
+// Resumes the track if it's open (paused), otherwise loads it, which starts it: the player plays what it loads.
+static Result<SBAny> playMusic() {
     const Result<SBAny> state = Switchboard::getValue(MUSIC_PLAYER_NODE, "state");
     const std::string current = state.isError() ? "" : SBAny::convert<std::string>(state.value());
     if (current == "connecting" || current == "buffering" || current == "ready") {
-        return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "play"), true);
+        return Switchboard::callAction(MUSIC_PLAYER_NODE, "play");
     }
-    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "load", { { "url", MUSIC_URL } }), true);
+    return Switchboard::callAction(MUSIC_PLAYER_NODE, "load", { { "url", MUSIC_URL } });
 }
 
-static ToolOutput pauseMusic() {
-    return musicResult(Switchboard::callAction(MUSIC_PLAYER_NODE, "pause"), false);
-}
-
-static ToolOutput handleToolCall(const std::string& name) {
+static Result<SBAny> runTool(const std::string& name) {
     if (name == "play_music") {
         return playMusic();
     }
     if (name == "pause_music") {
-        return pauseMusic();
+        return Switchboard::callAction(MUSIC_PLAYER_NODE, "pause");
     }
-    return toolError("Unknown tool: " + name);
+    return makeError<SBAny>("Unknown tool: " + name);
 }
 
 int main(int argc, const char* argv[]) {
@@ -150,24 +129,31 @@ int main(int argc, const char* argv[]) {
         const auto data = SBAny::convert<SBAnyMap>(event.data);
         const auto callId = SBAny::convert<std::string>(data.at("callId"));
         const auto name = SBAny::convert<std::string>(data.at("name"));
-        const auto argumentsJson = SBAny::convert<std::string>(data.at("argumentsJson"));
 
-        const ToolOutput output = handleToolCall(name);
-        printLine("[" + name + " " + argumentsJson + (output.ok ? " -> " : " failed: ") + output.json + "]");
+        const Result<SBAny> result = runTool(name);
+        if (result.isError()) {
+            printLine("[" + name + " failed: " + result.error().message + "]");
+        } else {
+            printLine("[" + name + "]");
+        }
 
-        const auto answer = output.ok
-            ? Switchboard::callAction(LIVE_NODE, "submitToolResult", { { "callId", callId }, { "outputJson", output.json } })
-            : Switchboard::callAction(LIVE_NODE, "submitToolError", { { "callId", callId }, { "errorJson", output.json } });
+        const auto answer = result.isError()
+            ? Switchboard::callAction(
+                  LIVE_NODE,
+                  "submitToolError",
+                  { { "callId", callId },
+                    { "errorJson", SBAnyMap::mapToJson(SBAnyMap({ { "error", result.error().message } })) } }
+              )
+            : Switchboard::callAction(LIVE_NODE, "submitToolResult", { { "callId", callId }, { "outputJson", R"({"ok":true})" } });
         if (answer.isError()) {
             printLine("[Failed to answer " + name + ": " + answer.error().message + "]");
         }
     });
 
     // Session state
-    Switchboard::addEventListener(LIVE_NODE, "sessionStarted", [](const Event&) {
-        static bool first = true;
-        printLine(first ? "[Connected. Start talking.]" : "[Connected.]");
-        first = false;
+    Switchboard::addEventListener(LIVE_NODE, "sessionStarted", [](const Event& event) {
+        const auto data = SBAny::convert<SBAnyMap>(event.data);
+        printLine(SBAny::convert<bool>(data.at("continued")) ? "[Connected.]" : "[Connected. Start talking.]");
     });
     Switchboard::addEventListener(LIVE_NODE, "sessionPaused", [](const Event&) {
         printLine("[Standby: paused after 15 s of quiet. Speak to resume.]");
@@ -181,8 +167,12 @@ int main(int argc, const char* argv[]) {
     Switchboard::addEventListener(LIVE_NODE, "sessionWoken", [](const Event&) {
         printLine("[Idle: reopened.]");
     });
-    Switchboard::addEventListener(LIVE_NODE, "sessionDisconnected", [](const Event&) {
-        printLine("[Connection lost. Reconnecting.]");
+    Switchboard::addEventListener(LIVE_NODE, "sessionDisconnected", [](const Event& event) {
+        const auto data = SBAny::convert<SBAnyMap>(event.data);
+        printLine(
+            SBAny::convert<bool>(data.at("reconnecting")) ? "[Connection lost. Reconnecting.]"
+                                                          : "[Session refused. Press Enter to stop.]"
+        );
     });
     Switchboard::addEventListener(LIVE_NODE, "error", [](const Event& event) {
         const auto data = SBAny::convert<SBAnyMap>(event.data);
@@ -200,7 +190,7 @@ int main(int argc, const char* argv[]) {
         return 1;
     }
 
-    // Wait for user to press a key
+    // Wait for Enter
     printLine("Connecting. Use headphones, so the assistant doesn't hear itself. Press Enter to stop.");
     std::cin.get();
 
