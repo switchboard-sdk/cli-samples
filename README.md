@@ -79,8 +79,10 @@ Please use headphones for a better experience. Then talk; the transcript prints 
 
 ## Documentation
 
+- [Register a Switchboard app](https://console.switchboard.audio/register)
 - [Switchboard SDK](https://docs.switchboard.audio/)
 - Integration: [macOS](https://docs.switchboard.audio/integration/macos),
   [Linux](https://docs.switchboard.audio/integration/linux),
   [Windows](https://docs.switchboard.audio/integration/windows)
 - [OpenAI Live credentials and billing](https://docs.switchboard.audio/extensions/openai/openai-live-node#credentials-and-billing)
+- [OpenAI Live Toolkit for React Native](https://github.com/switchboard-sdk/openai-live-toolkit)
