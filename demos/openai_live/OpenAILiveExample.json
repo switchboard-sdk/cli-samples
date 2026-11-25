@@ -1,0 +1,152 @@
+{
+  "type": "Switchboard.Realtime",
+  "config": {
+    "microphoneEnabled": true,
+    "defaultStreamParameters": {
+      "numberOfInputChannels": 1,
+      "numberOfOutputChannels": 2
+    },
+    "graph": {
+      "config": {
+        "sampleRate": 48000,
+        "bufferSize": 480
+      },
+      "nodes": [
+        {
+          "id": "multiChannelToMonoNode",
+          "type": "Switchboard.MultiChannelToMono"
+        },
+        {
+          "id": "vadSplitterNode",
+          "type": "Switchboard.BusSplitter"
+        },
+        {
+          "id": "vadNode",
+          "type": "Silero.VAD",
+          "config": {
+            "threshold": 0.5,
+            "minSilenceDurationMs": 500
+          }
+        },
+        {
+          "id": "liveNode",
+          "type": "OpenAI.Live",
+          "config": {
+            "instructions": "You're a friendly voice assistant in a Switchboard SDK sample app. Keep answers to a sentence or two.\n\nYou can't change anything in the app yourself: only delegating does. When the user asks for something your tools do, delegate it right away, every time, also when asked again or right after doing it. Until the result comes, say a word at most, like \"Sure\". Never say it's done, or that you'll do it, without delegating: saying so changes nothing. Your tools: play_music (play the app's music, an elevator music track, or resume it after a pause), pause_music (pause or stop the music).",
+            "delegation": "responses",
+            "responsesInstructions": "You carry out actions in the user's app. When a request matches one of your tools, call the tool; never claim an action is done without calling it.",
+            "tools": [
+              {
+                "type": "function",
+                "name": "play_music",
+                "description": "Play the app's music, an elevator music track. Resumes it after a pause; otherwise it starts from the beginning.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": false
+                }
+              },
+              {
+                "type": "function",
+                "name": "pause_music",
+                "description": "Pause or stop the music, so play_music resumes it where it was.",
+                "parameters": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": false
+                }
+              }
+            ],
+            "standbyTimeoutMs": 15000,
+            "idleTimeoutMs": 30000
+          }
+        },
+        {
+          "id": "musicPlayerNode",
+          "type": "Switchboard.StreamPlayer",
+          "config": {
+            "autoPlay": true
+          }
+        },
+        {
+          "id": "musicMonoNode",
+          "type": "Switchboard.MultiChannelToMono"
+        },
+        {
+          "id": "musicGainNode",
+          "type": "Switchboard.Gain",
+          "properties": {
+            "gain": 0.5
+          }
+        },
+        {
+          "id": "mixerNode",
+          "type": "Switchboard.Mixer",
+          "config": {
+            "numberOfInputs": 2
+          }
+        },
+        {
+          "id": "monoToMultiChannelNode",
+          "type": "Switchboard.MonoToMultiChannel"
+        }
+      ],
+      "connections": [
+        {
+          "sourceNode": "inputNode",
+          "destinationNode": "multiChannelToMonoNode"
+        },
+        {
+          "sourceNode": "multiChannelToMonoNode",
+          "destinationNode": "vadSplitterNode"
+        },
+        {
+          "sourceNode": "vadSplitterNode",
+          "sourceBusIndex": 0,
+          "destinationNode": "liveNode"
+        },
+        {
+          "sourceNode": "vadSplitterNode",
+          "sourceBusIndex": 1,
+          "destinationNode": "vadNode"
+        },
+        {
+          "sourceNode": "liveNode",
+          "destinationNode": "mixerNode",
+          "destinationBusIndex": 0
+        },
+        {
+          "sourceNode": "musicPlayerNode",
+          "destinationNode": "musicMonoNode"
+        },
+        {
+          "sourceNode": "musicMonoNode",
+          "destinationNode": "musicGainNode"
+        },
+        {
+          "sourceNode": "musicGainNode",
+          "destinationNode": "mixerNode",
+          "destinationBusIndex": 1
+        },
+        {
+          "sourceNode": "mixerNode",
+          "destinationNode": "monoToMultiChannelNode"
+        },
+        {
+          "sourceNode": "monoToMultiChannelNode",
+          "destinationNode": "outputNode"
+        }
+      ],
+      "dataConnections": [
+        {
+          "source": "vadNode/events/speechStarted",
+          "destination": "liveNode/actions/speechStarted"
+        },
+        {
+          "source": "vadNode/events/speechEnded",
+          "destination": "liveNode/actions/speechEnded"
+        }
+      ]
+    }
+  }
+}
