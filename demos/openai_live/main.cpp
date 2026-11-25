@@ -12,10 +12,6 @@
 
 using namespace switchboard;
 
-// Your Switchboard app's ID and secret. Register an app at https://console.switchboard.audio/register.
-static const std::string APP_ID = "";
-static const std::string APP_SECRET = "";
-
 static const std::string LIVE_NODE = "liveNode";
 static const std::string MUSIC_PLAYER_NODE = "musicPlayerNode";
 static const std::string MUSIC_URL =
@@ -76,13 +72,6 @@ static Result<SBAny> runTool(const std::string& name) {
 }
 
 int main(int argc, const char* argv[]) {
-    if (APP_ID.empty() || APP_SECRET.empty()) {
-        std::cerr << "Set your Switchboard app's ID and secret in main.cpp. "
-                     "Register an app at https://console.switchboard.audio/register."
-                  << std::endl;
-        return 1;
-    }
-
     // Load JSON
     std::string engineJSONFilePath = "OpenAILiveExample.json";
     auto engineJSON = readContentsOfTextFile(engineJSONFilePath);
@@ -94,11 +83,12 @@ int main(int argc, const char* argv[]) {
     // Keep the SDK's log out of the transcript.
     Logger::setLogLevel(LogLevel::Warning);
 
-    // Init Switchboard SDK and extensions. Silero VAD drives idle mode.
+    // Init Switchboard SDK and extensions. Silero VAD drives idle mode. OpenAI Live needs your own Switchboard app:
+    // register one at https://console.switchboard.audio/register and put its appID and appSecret here.
     extensions::openai::OpenAIExtension::load();
     extensions::silerovad::SileroVADExtension::load();
-    SBAnyMap sdkConfig({ { "appID", APP_ID },
-                         { "appSecret", APP_SECRET },
+    SBAnyMap sdkConfig({ { "appID", "demo" },
+                         { "appSecret", "demo" },
                          { "extensions", SBAnyMap({ { "OpenAI", SBAnyMap() }, { "Silero", SBAnyMap() } }) } });
     auto initializeResult = Switchboard::initialize(sdkConfig);
     if (initializeResult.isError()) {

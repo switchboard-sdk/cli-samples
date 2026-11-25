@@ -66,8 +66,8 @@ cd out/bin
 `OpenAILive` holds a voice conversation with OpenAI GPT-Live through the
 [`OpenAI.Live` node](https://docs.switchboard.audio/extensions/openai/openai-live-node).
 
-It needs your own Switchboard app: [register one](https://console.switchboard.audio/register), then put its ID and
-secret in `demos/openai_live/main.cpp` and build again.
+It needs your own Switchboard app: [register one](https://console.switchboard.audio/register), then replace `"demo"`
+with its `appID` and `appSecret` in `demos/openai_live/main.cpp` and build again.
 
 ```bash
 cd out/bin
