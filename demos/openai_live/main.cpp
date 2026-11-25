@@ -181,7 +181,7 @@ int main(int argc, const char* argv[]) {
     }
 
     // Wait for Enter
-    printLine("Connecting. Use headphones, so the assistant doesn't hear itself. Press Enter to stop.");
+    printLine("Connecting. Please use headphones for a better experience. Press Enter to stop.");
     std::cin.get();
 
     // Stop and tear down audio engine

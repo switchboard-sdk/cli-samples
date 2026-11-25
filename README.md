@@ -74,9 +74,8 @@ cd out/bin
 ./OpenAILive
 ```
 
-Use headphones, so the assistant doesn't hear itself. On macOS, allow your terminal to use the microphone when asked.
-Then talk; the transcript prints as you go. Say "play some music" or "pause the music" to try the tools. Press Enter
-to stop.
+Please use headphones for a better experience. Then talk; the transcript prints as you go. Say "play some music" or
+"pause the music" to try the tools. Press Enter to stop.
 
 ## Documentation
 
