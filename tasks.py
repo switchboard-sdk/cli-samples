@@ -1,6 +1,7 @@
 from invoke import task, Context
 
 import os
+import shutil
 
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -17,8 +18,8 @@ def clean(ctx):
 @task
 def build_macos(ctx, clean=False, build_type="Release"):
     """Build the macOS version of the ExampleDSP Extension"""
-    if clean:
-        ctx.run("rm -rf build")
+    if clean and os.path.isdir("build"):
+        shutil.rmtree("build")
     ctx.run(
         f"cmake -B build -G Xcode . &&"
         f"cmake --build build --config {build_type} &&"
@@ -28,8 +29,8 @@ def build_macos(ctx, clean=False, build_type="Release"):
 @task
 def build_linux(ctx, clean=False, build_type="Release"):
     """Build the Linux version of the ExampleDSP Extension"""
-    if clean:
-        ctx.run("rm -rf build")
+    if clean and os.path.isdir("build"):
+        shutil.rmtree("build")
     ctx.run(
         f"cmake -B build . &&"
         f"cmake --build build --config {build_type} &&"
@@ -39,8 +40,8 @@ def build_linux(ctx, clean=False, build_type="Release"):
 @task
 def build_windows(ctx, clean=False, build_type="Release"):
     """Build the Windows version of the ExampleDSP Extension"""
-    if clean:
-        ctx.run("rm -rf build")
+    if clean and os.path.isdir("build"):
+        shutil.rmtree("build")
     ctx.run(
         f"cmake -B build . &&"
         f"cmake --build build --config {build_type} &&"
